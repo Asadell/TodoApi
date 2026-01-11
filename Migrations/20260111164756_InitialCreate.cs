@@ -22,7 +22,7 @@ namespace TodoApi.Migrations
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     is_completed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    complete_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

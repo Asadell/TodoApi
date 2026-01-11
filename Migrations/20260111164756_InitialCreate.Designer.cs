@@ -12,7 +12,7 @@ using TodoApi.Data;
 namespace TodoApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251225121731_InitialCreate")]
+    [Migration("20260111164756_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -34,9 +34,9 @@ namespace TodoApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CompleteAt")
+                    b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("complete_at");
+                        .HasColumnName("completed_at");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
