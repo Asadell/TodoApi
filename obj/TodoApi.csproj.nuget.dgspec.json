@@ -20,6 +20,7 @@
           "net9.0"
         ],
         "sources": {
+          "/home/asadel/MyLocalNuGet": {},
           "/usr/lib64/dotnet/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
@@ -58,6 +59,10 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[9.0.1, )"
+            },
+            "Nedo.AspNet.Request.Validation": {
+              "target": "Package",
+              "version": "[1.0.0, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
