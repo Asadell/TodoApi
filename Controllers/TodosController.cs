@@ -7,74 +7,77 @@ namespace TodoApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TodosController : ControllerBase
+public class TodoController : ControllerBase
 {
     private readonly AppDbContext _context;
 
-    public TodosController(AppDbContext context)
+    public TodoController(AppDbContext context)
     {
         _context = context;
     }
 
-    // get api/todos
+    // GET: api/todo
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodos()
+    public async Task<ActionResult<ApiResponse<IEnumerable<TodoItem>>>> GetTodos()
     {
-        return await _context.TodoItems.ToListAsync();
+        var todos = await _context.TodoItems.ToListAsync();
+        return Ok(ApiResponse<IEnumerable<TodoItem>>.Success(todos, "Todos retrieved successfully"));
     }
 
-    // get api/todo/1
+    // GET: api/todo/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<TodoItem>> GetTodo(int id)
+    public async Task<ActionResult<ApiResponse<TodoItem>>> GetTodo(int id)
     {
         var todo = await _context.TodoItems.FindAsync(id);
 
         if (todo == null)
         {
-            return NotFound(new { message = "Todo not found"});
+            return NotFound(ApiResponse<TodoItem>.Error("Todo not found"));
         }
 
-        return todo;
+        return Ok(ApiResponse<TodoItem>.Success(todo, "Todo retrieved successfully"));
     }
 
-    // post api/todo
+    // POST: api/todo
     [HttpPost]
-    public async Task<ActionResult<TodoItem>> CreateTodo(TodoItem todo)
+    public async Task<ActionResult<ApiResponse<TodoItem>>> CreateTodo(TodoItem todo)
     {
         if (string.IsNullOrWhiteSpace(todo.Title))
         {
-            return BadRequest(new { message = "Title is required"});
+            return BadRequest(ApiResponse<TodoItem>.Error("Title is required"));
         }
 
         _context.TodoItems.Add(todo);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, todo);
+        var response = ApiResponse<TodoItem>.Success(todo, "Todo created successfully");
+        return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, response);
     }
 
-    // put api/todo/5
+    // PUT: api/todo/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTodo(int id, TodoItem todo)
+    public async Task<ActionResult<ApiResponse>> UpdateTodo(int id, TodoItem todo)
     {
         if (id != todo.Id)
         {
-            return BadRequest(new { message = "ID mismatch"});
+            return BadRequest(ApiResponse.Error("ID mismatch"));
         }
 
         var existingTodo = await _context.TodoItems.FindAsync(id);
         if (existingTodo == null)
         {
-            return NotFound(new { message = "Todo not found" });
+            return NotFound(ApiResponse.Error("Todo not found"));
         }
 
         existingTodo.Title = todo.Title;
         existingTodo.Description = todo.Description;
         existingTodo.IsCompleted = todo.IsCompleted;
-
+        
         if (todo.IsCompleted && existingTodo.CompleteAt == null)
         {
             existingTodo.CompleteAt = DateTime.UtcNow;
-        } else if (!todo.IsCompleted)
+        }
+        else if (!todo.IsCompleted)
         {
             existingTodo.CompleteAt = null;
         }
@@ -87,28 +90,46 @@ public class TodosController : ControllerBase
         {
             if (!TodoExists(id))
             {
-                return NotFound();
+                return NotFound(ApiResponse.Error("Todo not found"));
             }
             throw;
         }
 
-        return NoContent();
+        return Ok(ApiResponse.Success("Todo updated successfully"));
     }
 
-    // delete api/todo/5
+    // DELETE: api/todo/5
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTodo(int id)
+    public async Task<ActionResult<ApiResponse>> DeleteTodo(int id)
     {
         var todo = await _context.TodoItems.FindAsync(id);
-        if (todo==null)
+        if (todo == null)
         {
-            return NotFound(new { message = "Todo not found" });
+            return NotFound(ApiResponse.Error("Todo not found"));
         }
 
         _context.TodoItems.Remove(todo);
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Success("Todo deleted successfully"));
+    }
+
+    // PATCH: api/todo/5/toggle
+    [HttpPatch("{id}/toggle")]
+    public async Task<ActionResult<ApiResponse<TodoItem>>> ToggleTodo(int id)
+    {
+        var todo = await _context.TodoItems.FindAsync(id);
+        if (todo == null)
+        {
+            return NotFound(ApiResponse<TodoItem>.Error("Todo not found"));
+        }
+
+        todo.IsCompleted = !todo.IsCompleted;
+        todo.CompleteAt = todo.IsCompleted ? DateTime.UtcNow : null;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<TodoItem>.Success(todo, "Todo toggled successfully"));
     }
 
     private bool TodoExists(int id)
