@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
+using Nedo.AspNet.Request.Validation.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
         .UseSnakeCaseNamingConvention()
 );
+
+builder.Services.AddRequestValidation();
 
 var app = builder.Build();
 

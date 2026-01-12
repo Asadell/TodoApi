@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.Models;
+using TodoApi.Models.Requests;
+using Nedo.AspNet.Request.Validation.Contracts;
+using Nedo.AspNet.Request.Validation.Context;
 
 namespace TodoApi.Controllers;
 
@@ -10,76 +13,109 @@ namespace TodoApi.Controllers;
 public class TodoController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IRequestValidationEngine _validationEngine;
 
-    public TodoController(AppDbContext context)
+    public TodoController(AppDbContext context, IRequestValidationEngine validationEngine)
     {
         _context = context;
+        _validationEngine = validationEngine;
     }
 
     // GET: api/todo
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<TodoItem>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<TodoItem>>>> GetTodos()
     {
-        var todos = await _context.TodoItems.ToListAsync();
-        return Ok(ApiResponse<IEnumerable<TodoItem>>.Success(todos, "Todos retrieved successfully"));
+        var todos = await _context.TodoItems
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+        
+        return Ok(ApiResponse<IEnumerable<TodoItem>>.Ok(todos, "Todos retrieved successfully"));
     }
 
     // GET: api/todo/5
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<TodoItem>>> GetTodo(int id)
     {
         var todo = await _context.TodoItems.FindAsync(id);
 
         if (todo == null)
         {
-            return NotFound(ApiResponse<TodoItem>.Error("Todo not found"));
+            return NotFound(ApiResponse<TodoItem>.Fail("Todo not found"));
         }
 
-        return Ok(ApiResponse<TodoItem>.Success(todo, "Todo retrieved successfully"));
+        return Ok(ApiResponse<TodoItem>.Ok(todo, "Todo retrieved successfully"));
     }
 
     // POST: api/todo
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<TodoItem>>> CreateTodo(TodoItem todo)
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<TodoItem>>> CreateTodo(CreateTodoRequest request)
     {
-        if (string.IsNullOrWhiteSpace(todo.Title))
+        var validationResult = _validationEngine.Validate(request);
+        
+        if (!validationResult.IsValid)
         {
-            return BadRequest(ApiResponse<TodoItem>.Error("Title is required"));
+            var errors = validationResult.Errors
+                .Select(e => new ValidationErrorDetail(e.Field, e.Message, e.Code))
+                .ToList();
+            
+            return BadRequest(ApiResponse<TodoItem>.Fail("Validation failed", errors));
         }
+
+        var todo = new TodoItem
+        {
+            Title = request.Title,
+            Description = request.Description,
+            IsCompleted = false,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.TodoItems.Add(todo);
         await _context.SaveChangesAsync();
 
-        var response = ApiResponse<TodoItem>.Success(todo, "Todo created successfully");
+        var response = ApiResponse<TodoItem>.Ok(todo, "Todo created successfully");
         return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, response);
     }
 
     // PUT: api/todo/5
     [HttpPut("{id}")]
-    public async Task<ActionResult<ApiResponse>> UpdateTodo(int id, TodoItem todo)
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse>> UpdateTodo(int id, UpdateTodoRequest request)
     {
-        if (id != todo.Id)
+        var validationResult = _validationEngine.Validate(request);
+        
+        if (!validationResult.IsValid)
         {
-            return BadRequest(ApiResponse.Error("ID mismatch"));
+            var errors = validationResult.Errors
+                .Select(e => new ValidationErrorDetail(e.Field, e.Message, e.Code))
+                .ToList();
+            
+            return BadRequest(ApiResponse.Fail("Validation failed", errors));
         }
 
         var existingTodo = await _context.TodoItems.FindAsync(id);
         if (existingTodo == null)
         {
-            return NotFound(ApiResponse.Error("Todo not found"));
+            return NotFound(ApiResponse.Fail("Todo not found"));
         }
 
-        existingTodo.Title = todo.Title;
-        existingTodo.Description = todo.Description;
-        existingTodo.IsCompleted = todo.IsCompleted;
+        existingTodo.Title = request.Title;
+        existingTodo.Description = request.Description;
+        existingTodo.IsCompleted = request.IsCompleted;
         
-        if (todo.IsCompleted && existingTodo.CompleteAt == null)
+        if (request.IsCompleted && existingTodo.CompletedAt == null)
         {
-            existingTodo.CompleteAt = DateTime.UtcNow;
+            existingTodo.CompletedAt = DateTime.UtcNow;
         }
-        else if (!todo.IsCompleted)
+        else if (!request.IsCompleted)
         {
-            existingTodo.CompleteAt = null;
+            existingTodo.CompletedAt = null;
         }
 
         try
@@ -88,52 +124,57 @@ public class TodoController : ControllerBase
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!TodoExists(id))
+            if (!await TodoExists(id))
             {
-                return NotFound(ApiResponse.Error("Todo not found"));
+                return NotFound(ApiResponse.Fail("Todo not found"));
             }
             throw;
         }
 
-        return Ok(ApiResponse.Success("Todo updated successfully"));
+        return Ok(ApiResponse.Ok("Todo updated successfully"));
     }
 
     // DELETE: api/todo/5
     [HttpDelete("{id}")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse>> DeleteTodo(int id)
     {
         var todo = await _context.TodoItems.FindAsync(id);
         if (todo == null)
         {
-            return NotFound(ApiResponse.Error("Todo not found"));
+            return NotFound(ApiResponse.Fail("Todo not found"));
         }
 
         _context.TodoItems.Remove(todo);
         await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse.Success("Todo deleted successfully"));
+        return Ok(ApiResponse.Ok("Todo deleted successfully"));
     }
 
     // PATCH: api/todo/5/toggle
     [HttpPatch("{id}/toggle")]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<TodoItem>>> ToggleTodo(int id)
     {
         var todo = await _context.TodoItems.FindAsync(id);
         if (todo == null)
         {
-            return NotFound(ApiResponse<TodoItem>.Error("Todo not found"));
+            return NotFound(ApiResponse<TodoItem>.Fail("Todo not found"));
         }
 
         todo.IsCompleted = !todo.IsCompleted;
-        todo.CompleteAt = todo.IsCompleted ? DateTime.UtcNow : null;
+        todo.CompletedAt = todo.IsCompleted ? DateTime.UtcNow : null;
 
         await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse<TodoItem>.Success(todo, "Todo toggled successfully"));
+        return Ok(ApiResponse<TodoItem>.Ok(todo, "Todo toggled successfully"));
     }
 
-    private bool TodoExists(int id)
+    // HELPER
+    private async Task<bool> TodoExists(int id)
     {
-        return _context.TodoItems.Any(e => e.Id == id);
+        return await _context.TodoItems.AnyAsync(e => e.Id == id);
     }
 }
