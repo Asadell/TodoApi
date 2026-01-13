@@ -5,6 +5,7 @@ using TodoApi.Models;
 using TodoApi.Models.Requests;
 using Nedo.AspNet.Request.Validation.Contracts;
 using Nedo.AspNet.Request.Validation.Context;
+using TodoApi.Services;
 
 namespace TodoApi.Controllers;
 
@@ -14,11 +15,13 @@ public class TodoController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IRequestValidationEngine _validationEngine;
+    private readonly IFileService _fileService;
 
-    public TodoController(AppDbContext context, IRequestValidationEngine validationEngine)
+    public TodoController(AppDbContext context, IRequestValidationEngine validationEngine, IFileService fileService)
     {
         _context = context;
         _validationEngine = validationEngine;
+        _fileService = fileService;
     }
 
     // GET: api/todo
@@ -170,6 +173,139 @@ public class TodoController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(ApiResponse<TodoItem>.Ok(todo, "Todo toggled successfully"));
+    }
+
+    [HttpPost("with-image")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<TodoItem>>> CreateTodoWithImage(
+        [FromForm] CreateTodoWithImageRequest request)
+    {
+        var validationResult = _validationEngine.Validate(request);
+        
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors
+                .Select(e => new ValidationErrorDetail(e.Field, e.Message, e.Code))
+                .ToList();
+            
+            return BadRequest(ApiResponse<TodoItem>.Fail("Validation failed", errors));
+        }
+
+        string? fileName = null;
+        string? filePath = null;
+        long? fileSize = null;
+
+        if (request.ImageFile != null)
+        {
+            try
+            {
+                var (savedFileName, savedPath, size) = await _fileService.SaveFileAsync(request.ImageFile);
+                fileName = savedFileName;
+                filePath = savedPath;
+                fileSize = size;
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<TodoItem>.Fail($"Failed to save image: {ex.Message}"));
+            }
+        }
+
+        var todo = new TodoItem
+        {
+            Title = request.Title,
+            Description = request.Description,
+            IsCompleted = false,
+            CreatedAt = DateTime.UtcNow,
+            ImageFileName = fileName,
+            ImagePath = filePath,
+            ImageSize = fileSize
+        };
+
+        _context.TodoItems.Add(todo);
+        await _context.SaveChangesAsync();
+
+        var response = ApiResponse<TodoItem>.Ok(todo, "Todo with image created successfully");
+        return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, response);
+    }
+
+    // POST: api/todo/5/upload-image
+    [HttpPost("{id}/upload-image")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<TodoItem>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<TodoItem>>> UploadImage(
+        int id,
+        [FromForm] UploadTodoImageRequest request)
+    {
+        var validationResult = _validationEngine.Validate(request);
+        
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors
+                .Select(e => new ValidationErrorDetail(e.Field, e.Message, e.Code))
+                .ToList();
+            
+            return BadRequest(ApiResponse<TodoItem>.Fail("Validation failed", errors));
+        }
+
+        var todo = await _context.TodoItems.FindAsync(id);
+        if (todo == null)
+        {
+            return NotFound(ApiResponse<TodoItem>.Fail("Todo not found"));
+        }
+
+        if (!string.IsNullOrEmpty(todo.ImagePath))
+        {
+            _fileService.DeleteFile(todo.ImagePath);
+        }
+
+        try
+        {
+            var (fileName, filePath, fileSize) = await _fileService.SaveFileAsync(request.Image);
+            
+            todo.ImageFileName = fileName;
+            todo.ImagePath = filePath;
+            todo.ImageSize = fileSize;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResponse<TodoItem>.Ok(todo, "Image uploaded successfully"));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<TodoItem>.Fail($"Failed to upload image: {ex.Message}"));
+        }
+    }
+
+    // DELETE: api/todo/5/image
+    [HttpDelete("{id}/image")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse>> DeleteImage(int id)
+    {
+        var todo = await _context.TodoItems.FindAsync(id);
+        if (todo == null)
+        {
+            return NotFound(ApiResponse.Fail("Todo not found"));
+        }
+
+        if (string.IsNullOrEmpty(todo.ImagePath))
+        {
+            return BadRequest(ApiResponse.Fail("No image to delete"));
+        }
+
+        _fileService.DeleteFile(todo.ImagePath);
+
+        todo.ImageFileName = null;
+        todo.ImagePath = null;
+        todo.ImageSize = null;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse.Ok("Image deleted successfully"));
     }
 
     // HELPER

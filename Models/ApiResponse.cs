@@ -56,7 +56,6 @@ public class ApiResponse
     }
 }
 
-/// Detail error untuk validation
 public class ValidationErrorDetail
 {
     public string Field { get; set; } = string.Empty;
