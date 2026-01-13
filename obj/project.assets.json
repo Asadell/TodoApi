@@ -29,6 +29,23 @@
           }
         }
       },
+      "Microsoft.AspNetCore.Http.Features/5.0.17": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "5.0.1",
+          "System.IO.Pipelines": "5.0.2"
+        },
+        "compile": {
+          "lib/net5.0/Microsoft.AspNetCore.Http.Features.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net5.0/Microsoft.AspNetCore.Http.Features.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.AspNetCore.OpenApi/9.0.11": {
         "type": "package",
         "dependencies": {
@@ -762,6 +779,7 @@
       "Nedo.AspNet.Request.Validation/1.0.0": {
         "type": "package",
         "dependencies": {
+          "Microsoft.AspNetCore.Http.Features": "5.0.17",
           "Nedo.AspNet.Common.Validation.Core": "1.0.0"
         },
         "compile": {
@@ -1013,7 +1031,7 @@
       "System.IO.Pipelines/7.0.0": {
         "type": "package",
         "compile": {
-          "lib/net7.0/_._": {
+          "lib/net7.0/System.IO.Pipelines.dll": {
             "related": ".xml"
           }
         },
@@ -1124,6 +1142,25 @@
         "lib/netstandard2.0/Humanizer.dll",
         "lib/netstandard2.0/Humanizer.xml",
         "logo.png"
+      ]
+    },
+    "Microsoft.AspNetCore.Http.Features/5.0.17": {
+      "sha512": "3jG2xS+dx8DDCGV/F+STdPTg89lX3ao3dF/VEPvJaz3wzBIjuadipTtYNEXDIVuOPZwb6jdmhrX9jkzOIBm5cw==",
+      "type": "package",
+      "path": "microsoft.aspnetcore.http.features/5.0.17",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net461/Microsoft.AspNetCore.Http.Features.dll",
+        "lib/net461/Microsoft.AspNetCore.Http.Features.xml",
+        "lib/net5.0/Microsoft.AspNetCore.Http.Features.dll",
+        "lib/net5.0/Microsoft.AspNetCore.Http.Features.xml",
+        "lib/netstandard2.0/Microsoft.AspNetCore.Http.Features.dll",
+        "lib/netstandard2.0/Microsoft.AspNetCore.Http.Features.xml",
+        "microsoft.aspnetcore.http.features.5.0.17.nupkg.sha512",
+        "microsoft.aspnetcore.http.features.nuspec"
       ]
     },
     "Microsoft.AspNetCore.OpenApi/9.0.11": {
@@ -2848,7 +2885,7 @@
       ]
     },
     "Nedo.AspNet.Common.Validation.Core/1.0.0": {
-      "sha512": "K2/0kwDQ296KADgMs1tgNZO6vPiynr5ET3cWlBPqnT0JRvR/kp6aWyFGWLLQwPtWJ7biyhOSCW+ChDmsoeAxxQ==",
+      "sha512": "PtIaXFfzJyCX/r+eGgkfqz6U25M0CznsTIqNj+isZsfLI9y5DR+z1NaQ3/seMUovsQ+JPh3UOdbGNER+t6OhTg==",
       "type": "package",
       "path": "nedo.aspnet.common.validation.core/1.0.0",
       "files": [
@@ -2860,7 +2897,7 @@
       ]
     },
     "Nedo.AspNet.Request.Validation/1.0.0": {
-      "sha512": "EnvCPj88HtZyEaucH476m2rTTDwXnPSXid08A8Xs/9Ssi6Puo1/Hdsd7EmNrA0XBIjpC8/xZqDT4kaqsV4KYxg==",
+      "sha512": "c/PzL8umDXAX97ZD8pj5AHy2rdAH9BjTW2Vqc/MUMDk627bf680zcXH7IzFSEvZ/WZcz7PQn1pJnjd6Ahya8zw==",
       "type": "package",
       "path": "nedo.aspnet.request.validation/1.0.0",
       "files": [

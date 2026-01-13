@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using Nedo.AspNet.Request.Validation.Extensions;
+using TodoApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 builder.Services.AddRequestValidation();
+builder.Services.AddScoped<IFileService, FileService>();
 
 var app = builder.Build();
 
