@@ -22,7 +22,8 @@ namespace TodoApi.Migrations
                     description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     is_completed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    image_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
